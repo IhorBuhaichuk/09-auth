@@ -1,3 +1,4 @@
+import { parseSetCookie } from "cookie";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { checkSession } from "@/lib/api/serverApi";
@@ -7,7 +8,8 @@ const publicRoutes = ["/sign-in", "/sign-up"];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const session = await checkSession();
+  const accessToken = request.cookies.get("accessToken")?.value;
+  const refreshToken = request.cookies.get("refreshToken")?.value;
   const isPrivateRoute = privateRoutes.some((route) =>
     pathname.startsWith(route),
   );
@@ -15,15 +17,62 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith(route),
   );
 
-  if (!session.success && isPrivateRoute) {
-    return NextResponse.redirect(new URL("/sign-in", request.url));
+  if (accessToken) {
+    if (isPublicRoute) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    return NextResponse.next();
   }
 
-  if (session.success && isPublicRoute) {
-    return NextResponse.redirect(new URL("/profile", request.url));
+  if (!refreshToken) {
+    if (isPrivateRoute) {
+      return NextResponse.redirect(new URL("/sign-in", request.url));
+    }
+
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  try {
+    const sessionResponse = await checkSession();
+
+    if (!sessionResponse.data.success) {
+      if (isPrivateRoute) {
+        return NextResponse.redirect(new URL("/sign-in", request.url));
+      }
+
+      return NextResponse.next();
+    }
+
+    const response = isPublicRoute
+      ? NextResponse.redirect(new URL("/", request.url))
+      : NextResponse.next();
+    const setCookie = sessionResponse.headers["set-cookie"];
+
+    if (setCookie) {
+      const cookies = Array.isArray(setCookie) ? setCookie : [setCookie];
+
+      cookies.forEach((cookie) => {
+        const parsedCookie = parseSetCookie(cookie);
+
+        if (parsedCookie.value) {
+          response.cookies.set(
+            parsedCookie.name,
+            parsedCookie.value,
+            parsedCookie,
+          );
+        }
+      });
+    }
+
+    return response;
+  } catch {
+    if (isPrivateRoute) {
+      return NextResponse.redirect(new URL("/sign-in", request.url));
+    }
+
+    return NextResponse.next();
+  }
 }
 
 export const config = {

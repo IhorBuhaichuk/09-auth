@@ -67,12 +67,10 @@ export async function getMe(): Promise<User> {
   return response.data;
 }
 
-export async function checkSession(): Promise<SessionResponse> {
-  const response = await api.get<SessionResponse>("/auth/session", {
+export async function checkSession(): Promise<AxiosResponse<SessionResponse>> {
+  return api.get<SessionResponse>("/auth/session", {
     headers: {
       Cookie: await getCookieHeader(),
     },
   });
-
-  return response.data;
 }

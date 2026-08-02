@@ -1,10 +1,19 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useEffect, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
 
 interface AuthRoutesLayoutProps {
   children: ReactNode;
 }
 
 function AuthRoutesLayout({ children }: AuthRoutesLayoutProps) {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.refresh();
+  }, [router]);
+
   return children;
 }
 
