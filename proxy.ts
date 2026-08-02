@@ -55,14 +55,10 @@ export async function proxy(request: NextRequest) {
       const cookies = Array.isArray(setCookie) ? setCookie : [setCookie];
 
       cookies.forEach((cookie) => {
-        const parsedCookie = parseSetCookie(cookie);
+        const { name, value, ...options } = parseSetCookie(cookie);
 
-        if (parsedCookie.value) {
-          response.cookies.set(
-            parsedCookie.name,
-            parsedCookie.value,
-            parsedCookie,
-          );
+        if (value) {
+          response.cookies.set(name, value, options);
         }
       });
     }
